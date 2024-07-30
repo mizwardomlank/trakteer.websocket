@@ -36,7 +36,6 @@ max_reconnect_delay = 60  # 1 minute
 shutdown_flag = threading.Event()
 
 # Message typing configuration from config
-chat_messages = {}
 quantity_threshold = 0  # Default value
 my_channel_id = ""
 
@@ -45,14 +44,12 @@ action_queue = Queue()
 queue_lock = threading.Lock()
 
 def fetch_config():
-    global chat_messages, quantity_threshold, my_channel_id
+    global quantity_threshold, my_channel_id
     try:
         response = requests.get(CONFIG_URL)
         response.raise_for_status()
         config = response.json()
-        # Access the `chat_messages` and `quantity_threshold` inside `record`
         record = config.get("record", {})
-        chat_messages = record.get("chat_messages", {})
         quantity_threshold = record.get("quantity_threshold", 0)
         my_channel_id = record.get("my_channel_id", "")
         logger.info("Config fetched and parsed successfully.")
@@ -72,9 +69,9 @@ def type_chat_message(message):
 def action_processor():
     while not shutdown_flag.is_set():
         try:
-            message = action_queue.get(timeout=1)
+            action_name = action_queue.get(timeout=1)
             with queue_lock:
-                type_chat_message(message)
+                type_chat_message(action_name)  # Send the command as the message
             action_queue.task_done()
         except Exception as e:
             if not shutdown_flag.is_set():
@@ -110,9 +107,8 @@ def handle_websocket_message(ws, message):
             quantity = data.get("quantity", 0)
             if quantity >= quantity_threshold and commands:
                 first_command = commands[0]
-                message = chat_messages.get(first_command, "Default message")
                 with queue_lock:
-                    action_queue.put(message)
+                    action_queue.put(first_command)  # Queue the command for typing
     except json.JSONDecodeError:
         logger.error("Received message is not a valid JSON")
 
