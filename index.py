@@ -106,6 +106,10 @@ def handle_websocket_message(ws, message):
             logger.info(f"Data: {data}")
 
             supporter_message = data.get("supporter_message", "")
+            if supporter_message is None:
+                logger.warning("No supporter_message found in the data.")
+                return
+
             commands = extract_commands(supporter_message)
             
             # Check if quantity is above the threshold
@@ -116,6 +120,7 @@ def handle_websocket_message(ws, message):
                     action_queue.put(first_command)
     except json.JSONDecodeError:
         logger.error("Received message is not a valid JSON")
+
 
 def on_open(ws):
     global is_connection_established, reconnect_attempts
