@@ -14,15 +14,10 @@ from queue import Queue
 # Load environment variables from .env file
 load_dotenv()
 
-# PUSHER_CHANNEL = os.getenv("PUSHER_CHANNEL")
-# PUSHER_CHANNEL_TEST = os.getenv("PUSHER_CHANNEL_TEST")
-# WS_URL = os.getenv("WS_URL")
-# CONFIG_URL = os.getenv("CONFIG_URL")
-
-WS_URL="wss://socket.trakteer.id/app/2ae25d102cc6cd41100a?protocol=7&client=python&version=5.1.1&flash=false"
-PUSHER_CHANNEL_TEST="creator-stream-test."
-PUSHER_CHANNEL="creator-stream."
-CONFIG_URL="https://api.jsonbin.io/v3/b/66a8f37dad19ca34f88efe51"
+WS_URL = "wss://socket.trakteer.id/app/2ae25d102cc6cd41100a?protocol=7&client=python&version=5.1.1&flash=false"
+PUSHER_CHANNEL_TEST = "creator-stream-test."
+PUSHER_CHANNEL = "creator-stream."
+CONFIG_URL = "https://api.jsonbin.io/v3/b/66a8f37dad19ca34f88efe51"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
@@ -40,10 +35,9 @@ base_reconnect_delay = 5  # 5 seconds
 max_reconnect_delay = 60  # 1 minute
 shutdown_flag = threading.Event()
 
-# Keyboard actions and configuration from config
-keyboard_actions = {}
+# Message typing configuration from config
+chat_messages = {}
 quantity_threshold = 0  # Default value
-repeat_settings = {}
 my_channel_id = ""
 
 # Action queue
@@ -51,16 +45,15 @@ action_queue = Queue()
 queue_lock = threading.Lock()
 
 def fetch_config():
-    global keyboard_actions, quantity_threshold, repeat_settings, my_channel_id
+    global chat_messages, quantity_threshold, my_channel_id
     try:
         response = requests.get(CONFIG_URL)
         response.raise_for_status()
         config = response.json()
-        # Access the `keyboard_actions`, `quantity_threshold`, and `repeat_settings` inside `record`
+        # Access the `chat_messages` and `quantity_threshold` inside `record`
         record = config.get("record", {})
-        keyboard_actions = record.get("keyboard_actions", {})
+        chat_messages = record.get("chat_messages", {})
         quantity_threshold = record.get("quantity_threshold", 0)
-        repeat_settings = record.get("repeat_settings", {})
         my_channel_id = record.get("my_channel_id", "")
         logger.info("Config fetched and parsed successfully.")
     except requests.RequestException as e:
@@ -68,31 +61,24 @@ def fetch_config():
     except json.JSONDecodeError:
         logger.error("Config file is not a valid JSON")
 
-def perform_keyboard_action(action_name):
-    if action_name in keyboard_actions:
-        action = keyboard_actions[action_name]
-        repeat_setting = repeat_settings.get(action_name, {})
-        repeat_count = repeat_setting.get("count", 1)
-        repeat_interval = repeat_setting.get("interval", 0)
-
-        for _ in range(repeat_count):
-            for key in action:
-                pyautogui.press(key)
-            logger.info(f"Performed keyboard action: {action_name}")
-            time.sleep(repeat_interval)
-    else:
-        logger.warning(f"No action found for: {action_name}")
+def type_chat_message(message):
+    pyautogui.keyDown('shift')
+    pyautogui.press('enter')
+    pyautogui.keyUp('shift')
+    pyautogui.typewrite(message)
+    pyautogui.press('enter')
+    logger.info(f"Typed chat message: {message}")
 
 def action_processor():
     while not shutdown_flag.is_set():
         try:
-            action_name = action_queue.get(timeout=1)
+            message = action_queue.get(timeout=1)
             with queue_lock:
-                perform_keyboard_action(action_name)
+                type_chat_message(message)
             action_queue.task_done()
         except Exception as e:
             if not shutdown_flag.is_set():
-                logger.error(f"Waiting the action (e): {e}")
+                logger.error(f"Waiting for the action (e): {e}")
 
 def extract_commands(supporter_message):
     words = supporter_message.split()
@@ -124,11 +110,11 @@ def handle_websocket_message(ws, message):
             quantity = data.get("quantity", 0)
             if quantity >= quantity_threshold and commands:
                 first_command = commands[0]
+                message = chat_messages.get(first_command, "Default message")
                 with queue_lock:
-                    action_queue.put(first_command)
+                    action_queue.put(message)
     except json.JSONDecodeError:
         logger.error("Received message is not a valid JSON")
-
 
 def on_open(ws):
     global is_connection_established, reconnect_attempts
