@@ -65,6 +65,7 @@ Config file format
     "!reload": [
       "r"
     ]
-  }
+  },
+  "quantity_threshold": 25
 }
 ```

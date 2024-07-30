@@ -36,19 +36,22 @@ shutdown_flag = threading.Event()
 
 # Keyboard actions from config
 keyboard_actions = {}
+quantity_threshold = 0  # Default value
 
 # Action queue
 action_queue = Queue()
 queue_lock = threading.Lock()
 
 def fetch_config():
-    global keyboard_actions
+    global keyboard_actions, quantity_threshold
     try:
         response = requests.get(CONFIG_URL)
         response.raise_for_status()
         config = response.json()
-        # Access the `keyboard_actions` inside `record`
-        keyboard_actions = config.get("record", {}).get("keyboard_actions", {})
+        # Access the `keyboard_actions` and `quantity_threshold` inside `record`
+        record = config.get("record", {})
+        keyboard_actions = record.get("keyboard_actions", {})
+        quantity_threshold = record.get("quantity_threshold", 0)
         logger.info("Config fetched and parsed successfully.")
     except requests.RequestException as e:
         logger.error(f"Failed to fetch config: {e}")
@@ -97,13 +100,14 @@ def handle_websocket_message(ws, message):
             supporter_message = data.get("supporter_message", "")
             commands = extract_commands(supporter_message)
             
-            if commands:
+            # Check if quantity is above the threshold
+            quantity = data.get("quantity", 0)
+            if quantity >= quantity_threshold and commands:
                 first_command = commands[0]
                 with queue_lock:
                     action_queue.put(first_command)
     except json.JSONDecodeError:
         logger.error("Received message is not a valid JSON")
-
 
 def on_open(ws):
     global is_connection_established, reconnect_attempts
