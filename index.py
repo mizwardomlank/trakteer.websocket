@@ -59,12 +59,20 @@ def fetch_config():
         logger.error("Config file is not a valid JSON")
 
 def type_chat_message(message):
-    pyautogui.keyDown('shift')
-    pyautogui.press('enter')
-    pyautogui.keyUp('shift')
-    pyautogui.typewrite(message)
-    pyautogui.press('enter')
-    logger.info(f"Typed chat message: {message}")
+    try:
+        logger.info("Starting to type chat message...")
+        # Ensure the chat input field is focused (you might need to manually focus it)
+        pyautogui.keyDown('shift')  # Hold down Shift
+        time.sleep(0.1)  # Small delay to ensure Shift is held down
+        pyautogui.press('enter')   # Press Enter to open the chat input
+        time.sleep(0.5)  # Delay to ensure chat input is focused
+        pyautogui.keyUp('shift')    # Release Shift
+        pyautogui.typewrite(message)  # Type the message
+        time.sleep(0.1)  # Delay to ensure message is typed
+        pyautogui.press('enter')   # Press Enter to send the message
+        logger.info(f"Typed chat message: {message}")
+    except Exception as e:
+        logger.error(f"Failed to type chat message: {e}")
 
 def action_processor():
     while not shutdown_flag.is_set():
