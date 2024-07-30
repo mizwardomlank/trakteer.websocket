@@ -14,10 +14,15 @@ from queue import Queue
 # Load environment variables from .env file
 load_dotenv()
 
-PUSHER_CHANNEL = os.getenv("PUSHER_CHANNEL")
-PUSHER_CHANNEL_TEST = os.getenv("PUSHER_CHANNEL_TEST")
-WS_URL = os.getenv("WS_URL")
-CONFIG_URL = os.getenv("CONFIG_URL")
+# PUSHER_CHANNEL = os.getenv("PUSHER_CHANNEL")
+# PUSHER_CHANNEL_TEST = os.getenv("PUSHER_CHANNEL_TEST")
+# WS_URL = os.getenv("WS_URL")
+# CONFIG_URL = os.getenv("CONFIG_URL")
+
+WS_URL="wss://socket.trakteer.id/app/2ae25d102cc6cd41100a?protocol=7&client=python&version=5.1.1&flash=false"
+PUSHER_CHANNEL_TEST="creator-stream-test."
+PUSHER_CHANNEL="creator-stream."
+CONFIG_URL="https://api.jsonbin.io/v3/b/66a8f37dad19ca34f88efe51"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
