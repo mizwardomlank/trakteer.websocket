@@ -46,3 +46,25 @@ async def listen():
             print(f"New tip received: {message}")
 
 asyncio.get_event_loop().run_until_complete(listen())
+```
+
+
+Config file format
+```
+{
+  "keyboard_actions": {
+    "!jump": [
+      "space"
+    ],
+    "!dropgun": [
+      "g"
+    ],
+    "!knive": [
+      "1"
+    ],
+    "!reload": [
+      "r"
+    ]
+  }
+}
+```

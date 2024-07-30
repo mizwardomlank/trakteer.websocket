@@ -8,6 +8,7 @@ import requests
 import pyautogui
 from websocket import WebSocketApp
 from dotenv import load_dotenv
+from queue import Queue
 
 # Load environment variables from .env file
 load_dotenv()
@@ -36,6 +37,10 @@ shutdown_flag = threading.Event()
 # Keyboard actions from config
 keyboard_actions = {}
 
+# Action queue
+action_queue = Queue()
+queue_lock = threading.Lock()
+
 def fetch_config():
     global keyboard_actions
     try:
@@ -59,6 +64,17 @@ def perform_keyboard_action(action_name):
     else:
         logger.warning(f"No action found for: {action_name}")
 
+def action_processor():
+    while not shutdown_flag.is_set():
+        try:
+            action_name = action_queue.get(timeout=1)
+            with queue_lock:
+                perform_keyboard_action(action_name)
+            action_queue.task_done()
+        except Exception as e:
+            if not shutdown_flag.is_set():
+                logger.error(f"Waiting the action (e): {e}")
+
 def extract_commands(supporter_message):
     words = supporter_message.split()
     commands = [word for word in words if word.startswith('!')]
@@ -76,15 +92,18 @@ def handle_websocket_message(ws, message):
         logger.info(f"Received message.")
         if response.get('event') == 'Illuminate\\Notifications\\Events\\BroadcastNotificationCreated':
             data = json.loads(response.get('data'))
-            logger.info(f"Notification received with id: {data['id']}")
             logger.info(f"Data: {data}")
 
             supporter_message = data.get("supporter_message", "")
             commands = extract_commands(supporter_message)
-            for command in commands:
-                perform_keyboard_action(command)
+            
+            if commands:
+                first_command = commands[0]
+                with queue_lock:
+                    action_queue.put(first_command)
     except json.JSONDecodeError:
         logger.error("Received message is not a valid JSON")
+
 
 def on_open(ws):
     global is_connection_established, reconnect_attempts
@@ -174,6 +193,8 @@ def signal_handler(sig, frame):
         ws.close()
     if ws_thread:
         ws_thread.join(timeout=10)  # Wait for the WebSocket thread to finish with a timeout
+    # Wait for the action queue to be processed
+    action_queue.join()
     logger.info('Shutdown complete.')
     exit(0)
 
@@ -181,6 +202,9 @@ if __name__ == "__main__":
     import signal
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Start the action processor thread
+    threading.Thread(target=action_processor, daemon=True).start()
     
     connect_websocket()
     while not shutdown_flag.is_set():
