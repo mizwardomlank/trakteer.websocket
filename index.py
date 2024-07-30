@@ -34,24 +34,26 @@ base_reconnect_delay = 5  # 5 seconds
 max_reconnect_delay = 60  # 1 minute
 shutdown_flag = threading.Event()
 
-# Keyboard actions from config
+# Keyboard actions and configuration from config
 keyboard_actions = {}
 quantity_threshold = 0  # Default value
+repeat_settings = {}
 
 # Action queue
 action_queue = Queue()
 queue_lock = threading.Lock()
 
 def fetch_config():
-    global keyboard_actions, quantity_threshold
+    global keyboard_actions, quantity_threshold, repeat_settings
     try:
         response = requests.get(CONFIG_URL)
         response.raise_for_status()
         config = response.json()
-        # Access the `keyboard_actions` and `quantity_threshold` inside `record`
+        # Access the `keyboard_actions`, `quantity_threshold`, and `repeat_settings` inside `record`
         record = config.get("record", {})
         keyboard_actions = record.get("keyboard_actions", {})
         quantity_threshold = record.get("quantity_threshold", 0)
+        repeat_settings = record.get("repeat_settings", {})
         logger.info("Config fetched and parsed successfully.")
     except requests.RequestException as e:
         logger.error(f"Failed to fetch config: {e}")
@@ -61,9 +63,15 @@ def fetch_config():
 def perform_keyboard_action(action_name):
     if action_name in keyboard_actions:
         action = keyboard_actions[action_name]
-        for key in action:
-            pyautogui.press(key)
-        logger.info(f"Performed keyboard action: {action_name}")
+        repeat_setting = repeat_settings.get(action_name, {})
+        repeat_count = repeat_setting.get("count", 1)
+        repeat_interval = repeat_setting.get("interval", 0)
+        
+        for _ in range(repeat_count):
+            for key in action:
+                pyautogui.press(key)
+            logger.info(f"Performed keyboard action: {action_name}")
+            time.sleep(repeat_interval)
     else:
         logger.warning(f"No action found for: {action_name}")
 

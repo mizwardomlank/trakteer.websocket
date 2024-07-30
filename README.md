@@ -66,6 +66,12 @@ Config file format
       "r"
     ]
   },
-  "quantity_threshold": 25
+  "quantity_threshold": 25,
+  "repeat_settings": {
+    "!jump": {
+      "count": 3,
+      "interval": 1  // 1 second between repetitions
+    }
+  }
 }
 ```
