@@ -6,6 +6,7 @@ import threading
 import random
 import requests
 import pyautogui
+import base64
 from websocket import WebSocketApp
 from dotenv import load_dotenv
 from queue import Queue
@@ -38,13 +39,14 @@ shutdown_flag = threading.Event()
 keyboard_actions = {}
 quantity_threshold = 0  # Default value
 repeat_settings = {}
+my_channel_id = ""
 
 # Action queue
 action_queue = Queue()
 queue_lock = threading.Lock()
 
 def fetch_config():
-    global keyboard_actions, quantity_threshold, repeat_settings
+    global keyboard_actions, quantity_threshold, repeat_settings, my_channel_id
     try:
         response = requests.get(CONFIG_URL)
         response.raise_for_status()
@@ -54,6 +56,7 @@ def fetch_config():
         keyboard_actions = record.get("keyboard_actions", {})
         quantity_threshold = record.get("quantity_threshold", 0)
         repeat_settings = record.get("repeat_settings", {})
+        my_channel_id = record.get("my_channel_id", "")
         logger.info("Config fetched and parsed successfully.")
     except requests.RequestException as e:
         logger.error(f"Failed to fetch config: {e}")
@@ -66,7 +69,7 @@ def perform_keyboard_action(action_name):
         repeat_setting = repeat_settings.get(action_name, {})
         repeat_count = repeat_setting.get("count", 1)
         repeat_interval = repeat_setting.get("interval", 0)
-        
+
         for _ in range(repeat_count):
             for key in action:
                 pyautogui.press(key)
@@ -132,8 +135,11 @@ def on_open(ws):
     # Fetch the config on opening the websocket connection
     fetch_config()
 
+    # Decode my_channel_id and append to PUSHER_CHANNEL and PUSHER_CHANNEL_TEST
+    decoded_channel_id = base64.b64decode(my_channel_id).decode('utf-8')
+    channels = [PUSHER_CHANNEL + decoded_channel_id, PUSHER_CHANNEL_TEST + decoded_channel_id]
+
     # Subscribe to the specified channels
-    channels = [PUSHER_CHANNEL, PUSHER_CHANNEL_TEST]
     for channel in channels:
         subscription_message = json.dumps({
             'event': 'pusher:subscribe',
