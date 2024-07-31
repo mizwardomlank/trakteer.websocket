@@ -23,7 +23,7 @@ load_dotenv()
 WS_URL="wss://socket.trakteer.id/app/2ae25d102cc6cd41100a?protocol=7&client=python&version=5.1.1&flash=false"
 PUSHER_CHANNEL_TEST="creator-stream-test."
 PUSHER_CHANNEL="creator-stream."
-CONFIG_URL="https://api.jsonbin.io/v3/b/66a8f37dad19ca34f88efe51"
+CONFIG_URL="https://api.trakteer.id/v1/public/jsondb/trakteercharity2024" # custom by creator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
@@ -60,12 +60,12 @@ def fetch_config():
         response = requests.get(CONFIG_URL)
         response.raise_for_status()
         config = response.json()
+        # logger.error(f"Config from API: {config}")
         # Access the `keyboard_actions`, `quantity_threshold`, and `repeat_settings` inside `record`
-        record = config.get("record", {})
-        keyboard_actions = record.get("keyboard_actions", {})
-        quantity_threshold = record.get("quantity_threshold", 0)
-        repeat_settings = record.get("repeat_settings", {})
-        my_channel_id = record.get("my_channel_id", "")
+        keyboard_actions = config.get("keyboard_actions", {})
+        quantity_threshold = config.get("quantity_threshold", 0)
+        repeat_settings = config.get("repeat_settings", {})
+        my_channel_id = config.get("my_channel_id", "")
         logger.info("Config fetched and parsed successfully.")
     except requests.RequestException as e:
         logger.error(f"Failed to fetch config: {e}")
