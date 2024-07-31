@@ -10,6 +10,7 @@ import base64
 from websocket import WebSocketApp
 from dotenv import load_dotenv
 from queue import Queue
+from playsound import playsound
 
 # Load environment variables from .env file
 load_dotenv()
@@ -50,6 +51,9 @@ my_channel_id = ""
 action_queue = Queue()
 queue_lock = threading.Lock()
 
+# Path to the sound file
+sound_file_path = 'notification.wav'
+
 def fetch_config():
     global keyboard_actions, quantity_threshold, repeat_settings, my_channel_id
     try:
@@ -74,6 +78,11 @@ def perform_keyboard_action(action_name):
         repeat_setting = repeat_settings.get(action_name, {})
         repeat_count = repeat_setting.get("count", 1)
         repeat_interval = repeat_setting.get("interval", 0)
+        # for playing note.wav file
+        if os.path.exists(sound_file_path):
+            playsound(sound_file_path)  # Play the sound here
+        else:
+            logger.error(f"Sound file not found: {sound_file_path}")
 
         for _ in range(repeat_count):
             for key in action:
